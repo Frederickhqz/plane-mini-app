@@ -1,12 +1,7 @@
 const API_BASE = '/api'
-const PLANE_API = 'http://168.231.69.92:54617/api/v1'
-const API_KEY = 'plane_api_a671d43b3a7248108f522e8c6703aa85'
-const WORKSPACE = 'agents'
 
-async function planeFetch(endpoint) {
-  const res = await fetch(`${PLANE_API}${endpoint}`, {
-    headers: { 'X-API-Key': API_KEY }
-  })
+async function apiFetch(endpoint) {
+  const res = await fetch(`${API_BASE}${endpoint}`)
   if (!res.ok) throw new Error(`HTTP ${res.status}`)
   return res.json()
 }
@@ -14,18 +9,18 @@ async function planeFetch(endpoint) {
 export const api = {
   // Projects
   async getProjects() {
-    const data = await planeFetch(`/workspaces/${WORKSPACE}/projects/`)
+    const data = await apiFetch('/projects')
     return data.results || []
   },
   
   async getProject(id) {
-    return planeFetch(`/workspaces/${WORKSPACE}/projects/${id}/`)
+    return apiFetch(`/projects/${id}`)
   },
   
   async updateProject(id, data) {
-    const res = await fetch(`${PLANE_API}/workspaces/${WORKSPACE}/projects/${id}/`, {
+    const res = await fetch(`${API_BASE}/projects/${id}`, {
       method: 'PATCH',
-      headers: { 'X-API-Key': API_KEY, 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data)
     })
     return res.json()
@@ -33,39 +28,27 @@ export const api = {
 
   // Issues
   async getIssues(projectId) {
-    const [issues, states] = await Promise.all([
-      planeFetch(`/workspaces/${WORKSPACE}/projects/${projectId}/issues/`),
-      planeFetch(`/workspaces/${WORKSPACE}/projects/${projectId}/states/`)
-    ])
-    
-    const stateMap = {}
-    states.results?.forEach(s => { stateMap[s.id] = s })
-    
-    return (issues.results || []).map(issue => ({
-      ...issue,
-      state_name: stateMap[issue.state]?.name || 'Unknown',
-      state_group: stateMap[issue.state]?.group || 'unknown',
-      state_color: stateMap[issue.state]?.color || '#60646C'
-    }))
+    const data = await apiFetch(`/issues/${projectId}`)
+    return data.results || []
   },
   
   async getIssue(projectId, issueId) {
-    return planeFetch(`/workspaces/${WORKSPACE}/projects/${projectId}/issues/${issueId}/`)
+    return apiFetch(`/issue/${projectId}/${issueId}`)
   },
   
   async createIssue(projectId, data) {
-    const res = await fetch(`${PLANE_API}/workspaces/${WORKSPACE}/projects/${projectId}/issues/`, {
+    const res = await fetch(`${API_BASE}/issues/${projectId}`, {
       method: 'POST',
-      headers: { 'X-API-Key': API_KEY, 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data)
     })
     return res.json()
   },
   
   async updateIssue(projectId, issueId, data) {
-    const res = await fetch(`${PLANE_API}/workspaces/${WORKSPACE}/projects/${projectId}/issues/${issueId}/`, {
+    const res = await fetch(`${API_BASE}/issues/${projectId}/${issueId}`, {
       method: 'PATCH',
-      headers: { 'X-API-Key': API_KEY, 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data)
     })
     return res.json()
@@ -73,45 +56,45 @@ export const api = {
 
   // States
   async getStates(projectId) {
-    const data = await planeFetch(`/workspaces/${WORKSPACE}/projects/${projectId}/states/`)
+    const data = await apiFetch(`/states/${projectId}`)
     return data.results || []
   },
 
   // Cycles
   async getCycles(projectId) {
-    const data = await planeFetch(`/workspaces/${WORKSPACE}/projects/${projectId}/cycles/`)
+    const data = await apiFetch(`/cycles/${projectId}`)
     return data.results || []
   },
   
   async getCycleIssues(projectId, cycleId) {
-    const data = await planeFetch(`/workspaces/${WORKSPACE}/projects/${projectId}/cycles/${cycleId}/cycle-issues/`)
+    const data = await apiFetch(`/cycles/${projectId}/${cycleId}/issues`)
     return data.results || []
   },
   
   async createCycle(projectId, data) {
-    const res = await fetch(`${PLANE_API}/workspaces/${WORKSPACE}/projects/${projectId}/cycles/`, {
+    const res = await fetch(`${API_BASE}/cycles/${projectId}`, {
       method: 'POST',
-      headers: { 'X-API-Key': API_KEY, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ ...data, project_id: projectId })
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data)
     })
     return res.json()
   },
 
   // Modules
   async getModules(projectId) {
-    const data = await planeFetch(`/workspaces/${WORKSPACE}/projects/${projectId}/modules/`)
+    const data = await apiFetch(`/modules/${projectId}`)
     return data.results || []
   },
   
   async getModuleIssues(projectId, moduleId) {
-    const data = await planeFetch(`/workspaces/${WORKSPACE}/projects/${projectId}/modules/${moduleId}/module-issues/`)
+    const data = await apiFetch(`/modules/${projectId}/${moduleId}/issues`)
     return data.results || []
   },
   
   async createModule(projectId, data) {
-    const res = await fetch(`${PLANE_API}/workspaces/${WORKSPACE}/projects/${projectId}/modules/`, {
+    const res = await fetch(`${API_BASE}/modules/${projectId}`, {
       method: 'POST',
-      headers: { 'X-API-Key': API_KEY, 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data)
     })
     return res.json()
@@ -119,7 +102,7 @@ export const api = {
 
   // Labels
   async getLabels(projectId) {
-    const data = await planeFetch(`/workspaces/${WORKSPACE}/projects/${projectId}/labels/`)
+    const data = await apiFetch(`/labels/${projectId}`)
     return data.results || []
   }
 }

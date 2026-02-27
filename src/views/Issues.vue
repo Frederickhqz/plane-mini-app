@@ -8,9 +8,13 @@
     </div>
     
     <div v-if="loading" class="loading">Loading issues...</div>
+    <div v-else-if="error" class="error">{{ error }}</div>
     
     <div v-else class="issue-list">
-      <div v-for="issue in issues" :key="issue.id" class="issue-item" @click="openIssue(issue)">
+      <div v-for="issue in issues" :key="issue.id" class="issue-item" 
+           @click="openIssue(issue)"
+           @touchstart="handleTouchStart"
+           @touchend="handleTouchEnd">
         <div class="issue-main">
           <span class="issue-id">{{ issue.identifier || 'UNK' }}-{{ issue.sequence_id }}</span>
           <span class="issue-title">{{ issue.name }}</span>
@@ -44,49 +48,77 @@ const projects = ref([])
 const issues = ref([])
 const selectedProject = ref(route.params.projectId || '')
 const loading = ref(false)
+const error = ref(null)
 
 onMounted(async () => {
-  projects.value = await api.getProjects()
-  if (selectedProject.value || projects.value.length === 1) {
-    if (!selectedProject.value) selectedProject.value = projects.value[0].id
-    loadIssues()
-  } else {
-    loadAllIssues()
+  try {
+    loading.value = true
+    projects.value = await api.getProjects()
+    if (selectedProject.value || projects.value.length === 1) {
+      if (!selectedProject.value) selectedProject.value = projects.value[0].id
+      await loadIssues()
+    } else {
+      await loadAllIssues()
+    }
+  } catch (e) {
+    console.error('Failed to load:', e)
+    error.value = 'Failed to load: ' + e.message
+  } finally {
+    loading.value = false
   }
 })
 
 async function loadAllIssues() {
   loading.value = true
-  const allIssues = []
-  for (const project of projects.value) {
-    try {
-      const projectIssues = await api.getIssues(project.id)
-      allIssues.push(...projectIssues.map(i => ({ ...i, identifier: project.identifier })))
-    } catch (e) {}
+  error.value = null
+  try {
+    const allIssues = []
+    for (const project of projects.value) {
+      try {
+        const projectIssues = await api.getIssues(project.id)
+        allIssues.push(...projectIssues.map(i => ({ ...i, identifier: project.identifier })))
+      } catch (e) {
+        console.warn(`Failed to load issues for project ${project.id}:`, e)
+      }
+    }
+    issues.value = allIssues.sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
+  } catch (e) {
+    error.value = 'Failed to load issues: ' + e.message
+  } finally {
+    loading.value = false
   }
-  issues.value = allIssues.sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
-  loading.value = false
 }
 
 async function loadIssues() {
   if (!selectedProject.value) {
-    loadAllIssues()
+    await loadAllIssues()
     return
   }
   
   loading.value = true
+  error.value = null
   try {
     const project = projects.value.find(p => p.id === selectedProject.value)
-    issues.value = (await api.getIssues(selectedProject.value))
-      .map(i => ({ ...i, identifier: project?.identifier }))
+    const projectIssues = await api.getIssues(selectedProject.value)
+    issues.value = projectIssues.map(i => ({ ...i, identifier: project?.identifier }))
   } catch (e) {
     console.error(e)
+    error.value = 'Failed to load issues: ' + e.message
+  } finally {
+    loading.value = false
   }
-  loading.value = false
 }
 
 function openIssue(issue) {
   router.push(`/issue/${issue.project}/${issue.id}`)
+}
+
+function handleTouchStart(e) {
+  e.currentTarget.style.opacity = '0.7'
+}
+
+function handleTouchEnd(e) {
+  e.currentTarget.style.opacity = '1'
 }
 </script>
 
@@ -112,6 +144,17 @@ function openIssue(issue) {
   border-radius: 8px;
   padding: 12px;
   margin-bottom: 8px;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+  user-select: none;
+  -webkit-user-select: none;
+  transition: opacity 0.1s, transform 0.1s;
+}
+
+.issue-item:active {
+  opacity: 0.7;
+  transform: scale(0.98);
 }
 
 .issue-main {
@@ -142,4 +185,13 @@ function openIssue(issue) {
 .priority.high { background: #f97316; }
 .priority.medium { background: #eab308; color: #000; }
 .priority.low { background: #3b82f6; }
+
+.error {
+  padding: 20px;
+  text-align: center;
+  color: #ef4444;
+  background: rgba(239, 68, 68, 0.1);
+  border-radius: 8px;
+  margin-bottom: 16px;
+}
 </style>
