@@ -79,7 +79,7 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 
-const API_URL = 'http://168.231.69.92:54618/api'
+const API_URL = '/api'
 const WORKSPACE = 'agents'
 
 const loading = ref(true)
@@ -97,7 +97,7 @@ const tabs = [
 ]
 
 async function fetchAPI(endpoint) {
-  const response = await fetch(`${API_URL}${endpoint}`)
+  const response = await fetch(endpoint)
   if (!response.ok) throw new Error(`HTTP ${response.status}`)
   return response.json()
 }
@@ -105,11 +105,8 @@ async function fetchAPI(endpoint) {
 async function loadData() {
   try {
     loading.value = true
-    
-    // Fetch projects
-    const data = await fetchAPI(`/workspaces/${WORKSPACE}/projects/`)
+    const data = await fetchAPI('/api/projects')
     projects.value = data.results || []
-    
     lastUpdated.value = new Date().toLocaleTimeString()
   } catch (e) {
     error.value = 'Failed to load: ' + e.message
@@ -120,30 +117,14 @@ async function loadData() {
 }
 
 async function loadIssues() {
-  if (issues.value.length > 0) return // Already loaded
-  
+  if (issues.value.length > 0) return
   loadingIssues.value = true
   const allIssues = []
   
   for (const project of projects.value) {
     try {
-      const [issuesData, statesData] = await Promise.all([
-        fetchAPI(`/workspaces/${WORKSPACE}/projects/${project.id}/issues/`),
-        fetchAPI(`/workspaces/${WORKSPACE}/projects/${project.id}/states/`)
-      ])
-      
-      const stateMap = {}
-      statesData.results?.forEach(s => {
-        stateMap[s.id] = { name: s.name, group: s.group }
-      })
-      
-      const projectIssues = (issuesData.results || []).map(issue => ({
-        ...issue,
-        state_name: stateMap[issue.state]?.name || 'Unknown',
-        state_group: stateMap[issue.state]?.group || 'unknown'
-      }))
-      
-      allIssues.push(...projectIssues)
+      const data = await fetchAPI(`/api/issues/${project.id}`)
+      allIssues.push(...(data.results || []))
     } catch (e) {
       console.error(`Failed to load issues for ${project.name}:`, e)
     }

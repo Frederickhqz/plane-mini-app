@@ -1,88 +1,79 @@
-import http from 'http';
-import fs from 'fs';
+import express from 'express';
+import cors from 'cors';
 import path from 'path';
 import { fileURLToPath } from 'url';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-const PORT = 54618;
+const app = express();
+const PORT = process.env.PORT || 3000;
 const PLANE_API = 'http://168.231.69.92:54617/api/v1';
 const API_KEY = 'plane_api_a671d43b3a7248108f522e8c6703aa85';
 
-const server = http.createServer(async (req, res) => {
-  // Add CORS headers
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
-  
-  if (req.method === 'OPTIONS') {
-    res.writeHead(200);
-    res.end();
-    return;
-  }
+// Enable CORS
+app.use(cors({
+  origin: '*',
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'X-API-Key']
+}));
 
-  const url = new URL(req.url, `http://localhost:${PORT}`);
-  
-  // Proxy API requests
-  if (url.pathname.startsWith('/api/')) {
-    const targetPath = url.pathname.replace('/api', '');
-    const targetUrl = `${PLANE_API}${targetPath}${url.search}`;
-    
-    console.log(`[PROXY] ${req.method} ${targetUrl}`);
-    
-    try {
-      const response = await fetch(targetUrl, {
-        method: req.method,
-        headers: {
-          'X-API-Key': API_KEY,
-          'Content-Type': 'application/json'
-        }
-      });
-      
-      const data = await response.json();
-      res.writeHead(response.status, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify(data));
-    } catch (error) {
-      console.error('[PROXY ERROR]', error);
-      res.writeHead(500, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({ error: error.message }));
-    }
-    return;
+// Parse JSON bodies
+app.use(express.json());
+
+// API proxy endpoint
+app.get('/api/projects', async (req, res) => {
+  try {
+    const response = await fetch(`${PLANE_API}/workspaces/agents/projects/`, {
+      headers: { 'X-API-Key': API_KEY }
+    });
+    const data = await response.json();
+    res.json(data);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
   }
-  
-  // Serve static files
-  let filePath = path.join(__dirname, 'dist', url.pathname === '/' ? 'index.html' : url.pathname);
-  
-  // Default to index.html for SPA routes
-  if (!fs.existsSync(filePath) || fs.statSync(filePath).isDirectory()) {
-    filePath = path.join(__dirname, 'dist', 'index.html');
-  }
-  
-  const ext = path.extname(filePath);
-  const contentType = {
-    '.html': 'text/html',
-    '.js': 'application/javascript',
-    '.css': 'text/css',
-    '.json': 'application/json',
-    '.png': 'image/png',
-    '.jpg': 'image/jpeg',
-    '.gif': 'image/gif',
-    '.svg': 'image/svg+xml'
-  }[ext] || 'application/octet-stream';
-  
-  fs.readFile(filePath, (err, content) => {
-    if (err) {
-      res.writeHead(404);
-      res.end('Not found');
-      return;
-    }
-    res.writeHead(200, { 'Content-Type': contentType });
-    res.end(content);
-  });
 });
 
-server.listen(PORT, '0.0.0.0', () => {
-  console.log(`🚀 Plane Mini App + Proxy running on http://0.0.0.0:${PORT}`);
-  console.log(`📡 Proxying API requests to ${PLANE_API}`);
+app.get('/api/issues/:projectId', async (req, res) => {
+  try {
+    const { projectId } = req.params;
+    const [issuesRes, statesRes] = await Promise.all([
+      fetch(`${PLANE_API}/workspaces/agents/projects/${projectId}/issues/`, {
+        headers: { 'X-API-Key': API_KEY }
+      }),
+      fetch(`${PLANE_API}/workspaces/agents/projects/${projectId}/states/`, {
+        headers: { 'X-API-Key': API_KEY }
+      })
+    ]);
+    
+    const issues = await issuesRes.json();
+    const states = await statesRes.json();
+    
+    const stateMap = {};
+    states.results?.forEach(s => {
+      stateMap[s.id] = { name: s.name, group: s.group };
+    });
+    
+    const enrichedIssues = (issues.results || []).map(issue => ({
+      ...issue,
+      state_name: stateMap[issue.state]?.name || 'Unknown',
+      state_group: stateMap[issue.state]?.group || 'unknown'
+    }));
+    
+    res.json({ ...issues, results: enrichedIssues });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Serve static files from dist/
+app.use(express.static(path.join(__dirname, 'dist')));
+
+// SPA fallback - serve index.html for all other routes
+app.use((req, res) => {
+  res.sendFile(path.join(__dirname, 'dist', 'index.html'));
+});
+
+app.listen(PORT, '0.0.0.0', () => {
+  console.log(`🚀 Plane Mini App running on port ${PORT}`);
 });
