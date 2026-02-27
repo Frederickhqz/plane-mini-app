@@ -1,195 +1,196 @@
 <template>
-  <div class="app">
-    <header class="header">
-      <div class="logo">✈️ Plane Mini App</div>
-      <div class="workspace">@agents</div>
+  <div class="app" :style="themeStyles">
+    <header class="header" v-if="$route.name !== 'dashboard'">
+      <button class="back-btn" @click="back" v-if="canGoBack">←</button>
+      <h1>{{ pageTitle }}</h1>
+      <div class="header-spacer"></div>
     </header>
-
-    <nav class="tabs">
-      <button 
-        v-for="tab in tabs" 
-        :key="tab.id"
-        :class="['tab', { active: currentTab === tab.id }]"
-        @click="currentTab = tab.id"
-      >
-        {{ tab.name }}
-      </button>
-    </nav>
-
+    
     <main class="content">
-      <div v-if="loading" class="loading">Loading... ⏳</div>
-      <div v-else-if="error" class="error">{{ error }}</div>
-      
-      <!-- Projects View -->
-      <div v-else-if="currentTab === 'projects'" class="projects">
-        <div v-for="project in projects" :key="project.id" class="project-card">
-          <div class="project-header">
-            <div class="project-icon" :style="{ background: getProjectColor(project.identifier) }">
-              {{ project.identifier }}
-            </div>
-            <div class="project-info">
-              <h3>{{ project.name }}</h3>
-              <p>{{ project.description || 'No description' }}</p>
-            </div>
-          </div>
-          <div class="project-stats">
-            <span class="stat">{{ project.total_cycles || 0 }} cycles</span>
-            <span class="stat">{{ project.total_modules || 0 }} modules</span>
-          </div>
-        </div>
-      </div>
-
-      <!-- Issues View -->
-      <div v-else-if="currentTab === 'issues'" class="issues">
-        <div v-if="loadingIssues" class="loading">Loading issues... ⏳</div>
-        <div v-else>
-          <div v-for="issue in issues" :key="issue.id" class="issue-card">
-            <div class="issue-header">
-              <span class="issue-id">{{ getProjectIdentifier(issue.project) }}-{{ issue.sequence_id }}</span>
-              <span :class="['state-badge', issue.state_group]">{{ issue.state_name }}</span>
-            </div>
-            <h4>{{ issue.name }}</h4>
-            <div class="issue-meta">
-              <span>{{ formatDate(issue.created_at) }}</span>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Stats View -->
-      <div v-else-if="currentTab === 'stats'" class="stats">
-        <div class="stat-card">
-          <div class="stat-number">{{ projects.length }}</div>
-          <div class="stat-label">Projects</div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-number">{{ issues.length }}</div>
-          <div class="stat-label">Issues</div>
-        </div>
-      </div>
+      <router-view v-slot="{ Component }">
+        <keep-alive>
+          <component :is="Component" :key="$route.fullPath" />
+        </keep-alive>
+      </router-view>
     </main>
-
-    <footer class="footer">
-      <div>Plane: 168.231.69.92:54617</div>
-      <div v-if="lastUpdated">Updated: {{ lastUpdated }}</div>
-    </footer>
+    
+    <nav class="bottom-nav">
+      <router-link to="/" class="nav-item" :class="{ active: $route.name === 'dashboard' }">
+        <span class="nav-icon">🏠</span>
+        <span class="nav-label">Home</span>
+      </router-link>
+      <router-link to="/projects" class="nav-item" :class="{ active: $route.name === 'projects' }">
+        <span class="nav-icon">📁</span>
+        <span class="nav-label">Projects</span>
+      </router-link>
+      <router-link to="/issues" class="nav-item" :class="{ active: $route.name === 'issues' }">
+        <span class="nav-icon">✅</span>
+        <span class="nav-label">Tasks</span>
+      </router-link>
+      <router-link to="/" class="nav-item">
+        <span class="nav-icon">📊</span>
+        <span class="nav-label">Stats</span>
+      </router-link>
+    </nav>
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { computed, inject } from 'vue'
+import { useRouter, useRoute } from 'vue-router'
 
-const API_URL = '/api'
-const WORKSPACE = 'agents'
+const router = useRouter()
+const route = useRoute()
+const tg = inject('tg')
 
-const loading = ref(true)
-const loadingIssues = ref(false)
-const error = ref(null)
-const projects = ref([])
-const issues = ref([])
-const currentTab = ref('projects')
-const lastUpdated = ref(null)
+const themeStyles = computed(() => ({
+  '--bg-color': tg?.themeParams?.bg_color || '#1a1a2e',
+  '--text-color': tg?.themeParams?.text_color || '#ffffff',
+  '--hint-color': tg?.themeParams?.hint_color || '#6b7280',
+  '--link-color': tg?.themeParams?.link_color || '#667eea',
+  '--button-color': tg?.themeParams?.button_color || '#667eea',
+  '--button-text-color': tg?.themeParams?.button_text_color || '#ffffff',
+  '--secondary-bg-color': tg?.themeParams?.secondary_bg_color || '#252547'
+}))
 
-const tabs = [
-  { id: 'projects', name: 'Projects' },
-  { id: 'issues', name: 'Issues' },
-  { id: 'stats', name: 'Stats' }
-]
-
-async function fetchAPI(endpoint) {
-  const response = await fetch(endpoint)
-  if (!response.ok) throw new Error(`HTTP ${response.status}`)
-  return response.json()
-}
-
-async function loadData() {
-  try {
-    loading.value = true
-    const data = await fetchAPI('/api/projects')
-    projects.value = data.results || []
-    lastUpdated.value = new Date().toLocaleTimeString()
-  } catch (e) {
-    error.value = 'Failed to load: ' + e.message
-    console.error(e)
-  } finally {
-    loading.value = false
+const pageTitle = computed(() => {
+  const titles = {
+    dashboard: 'Plane',
+    projects: 'Projects',
+    project: 'Project',
+    kanban: 'Kanban',
+    issues: 'All Issues',
+    cycles: 'Cycles',
+    modules: 'Modules',
+    issue: 'Issue'
   }
-}
-
-async function loadIssues() {
-  if (issues.value.length > 0) return
-  loadingIssues.value = true
-  const allIssues = []
-  
-  for (const project of projects.value) {
-    try {
-      const data = await fetchAPI(`/api/issues/${project.id}`)
-      allIssues.push(...(data.results || []))
-    } catch (e) {
-      console.error(`Failed to load issues for ${project.name}:`, e)
-    }
-  }
-  
-  issues.value = allIssues.sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
-  loadingIssues.value = false
-}
-
-function getProjectColor(identifier) {
-  const colors = { 'QRGEN': '#02b55c', 'CRM': '#e57a00', 'FRAME': '#02b5ed', 'AGENT': '#667eea' }
-  return colors[identifier] || '#60646C'
-}
-
-function getProjectIdentifier(projectId) {
-  const project = projects.value.find(p => p.id === projectId)
-  return project?.identifier || 'UNK'
-}
-
-function formatDate(dateString) {
-  return new Date(dateString).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
-}
-
-onMounted(() => {
-  loadData()
+  return titles[route.name] || 'Plane'
 })
 
-// Watch for tab change to load issues
-import { watch } from 'vue'
-watch(currentTab, (newTab) => {
-  if (newTab === 'issues') loadIssues()
-})
+const canGoBack = computed(() => route.name !== 'dashboard')
+
+function back() {
+  router.back()
+}
 </script>
 
-<style scoped>
-.app { min-height: 100vh; display: flex; flex-direction: column; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #1a1a2e; color: #fff; }
-.header { padding: 16px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); }
-.logo { font-size: 20px; font-weight: 700; }
-.workspace { font-size: 12px; opacity: 0.8; margin-top: 4px; }
-.tabs { display: flex; padding: 8px; background: rgba(255,255,255,0.05); gap: 8px; }
-.tab { flex: 1; padding: 12px; border: none; background: rgba(255,255,255,0.1); color: inherit; border-radius: 8px; cursor: pointer; font-size: 14px; }
-.tab.active { background: #667eea; }
-.content { flex: 1; padding: 16px; overflow-y: auto; }
-.loading, .error { text-align: center; padding: 40px; opacity: 0.7; }
-.error { color: #ff6b6b; }
-.project-card { background: rgba(255,255,255,0.05); border-radius: 12px; padding: 16px; margin-bottom: 12px; }
-.project-header { display: flex; gap: 12px; margin-bottom: 12px; }
-.project-icon { width: 48px; height: 48px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 12px; flex-shrink: 0; }
-.project-info h3 { font-size: 16px; margin-bottom: 4px; }
-.project-info p { font-size: 12px; opacity: 0.7; line-height: 1.4; }
-.project-stats { display: flex; gap: 12px; }
-.stat { font-size: 12px; opacity: 0.6; }
-.issue-card { background: rgba(255,255,255,0.05); border-radius: 12px; padding: 16px; margin-bottom: 12px; }
-.issue-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
-.issue-id { font-size: 12px; opacity: 0.5; font-family: monospace; }
-.state-badge { padding: 4px 8px; border-radius: 4px; font-size: 11px; text-transform: uppercase; }
-.state-badge.backlog { background: #60646C; }
-.state-badge.unstarted { background: #60646C; }
-.state-badge.started { background: #F59E0B; color: #000; }
-.state-badge.completed { background: #46A758; }
-.issue-card h4 { font-size: 15px; margin-bottom: 8px; }
-.issue-meta { display: flex; gap: 12px; font-size: 12px; opacity: 0.6; }
-.stats { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; }
-.stat-card { background: rgba(255,255,255,0.05); border-radius: 12px; padding: 20px; text-align: center; }
-.stat-number { font-size: 32px; font-weight: 700; color: #667eea; margin-bottom: 4px; }
-.stat-label { font-size: 13px; opacity: 0.7; }
-.footer { padding: 12px; text-align: center; font-size: 11px; opacity: 0.5; border-top: 1px solid rgba(255,255,255,0.1); }
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  background: var(--bg-color);
+  color: var(--text-color);
+}
+
+.app {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg-color);
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  padding: 16px;
+  background: var(--secondary-bg-color);
+  border-bottom: 1px solid rgba(255,255,255,0.1);
+}
+
+.header h1 {
+  font-size: 18px;
+  font-weight: 600;
+  flex: 1;
+  text-align: center;
+}
+
+.back-btn {
+  width: 40px;
+  height: 40px;
+  border: none;
+  background: rgba(255,255,255,0.1);
+  color: var(--text-color);
+  border-radius: 10px;
+  font-size: 20px;
+  cursor: pointer;
+}
+
+.header-spacer { width: 40px; }
+
+.content {
+  flex: 1;
+  overflow-y: auto;
+  padding-bottom: 70px;
+}
+
+.bottom-nav {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  display: flex;
+  background: var(--secondary-bg-color);
+  border-top: 1px solid rgba(255,255,255,0.1);
+  padding: 8px 0;
+  padding-bottom: max(8px, env(safe-area-inset-bottom));
+}
+
+.nav-item {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 8px;
+  text-decoration: none;
+  color: var(--hint-color);
+  font-size: 12px;
+}
+
+.nav-item.active { color: var(--link-color); }
+.nav-icon { font-size: 24px; margin-bottom: 4px; }
+.nav-label { font-size: 11px; }
+
+/* Common styles */
+.card {
+  background: var(--secondary-bg-color);
+  border-radius: 12px;
+  padding: 16px;
+  margin: 12px;
+}
+
+.btn {
+  padding: 12px 24px;
+  border: none;
+  border-radius: 10px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.btn-primary {
+  background: var(--button-color);
+  color: var(--button-text-color);
+}
+
+.badge {
+  display: inline-block;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 500;
+}
+
+.loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 40px;
+  opacity: 0.6;
+}
+
+.empty-state {
+  text-align: center;
+  padding: 40px;
+  opacity: 0.6;
+}
 </style>
