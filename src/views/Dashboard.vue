@@ -112,6 +112,9 @@ function openCycle(cycle) {
   border-radius: 12px;
   text-decoration: none;
   color: inherit;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
 }
 
 .action-icon { font-size: 32px; margin-bottom: 8px; }
@@ -129,6 +132,9 @@ function openCycle(cycle) {
   background: var(--secondary-bg-color);
   border-radius: 8px;
   margin-bottom: 8px;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
 }
 
 .issue-id { font-family: monospace; font-size: 12px; opacity: 0.6; min-width: 60px; }
@@ -150,6 +156,9 @@ function openCycle(cycle) {
   background: var(--secondary-bg-color);
   border-radius: 8px;
   margin-bottom: 8px;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
 }
 
 .cycle-card h3 { font-size: 14px; margin-bottom: 4px; }

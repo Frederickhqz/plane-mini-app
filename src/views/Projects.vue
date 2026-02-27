@@ -77,6 +77,9 @@ function openModules(project) {
   border-radius: 12px;
   padding: 16px;
   margin-bottom: 12px;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
 }
 
 .project-header {

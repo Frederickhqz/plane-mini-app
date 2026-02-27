@@ -133,6 +133,7 @@ body {
   border-top: 1px solid rgba(255,255,255,0.1);
   padding: 8px 0;
   padding-bottom: max(8px, env(safe-area-inset-bottom));
+  z-index: 100;
 }
 
 .nav-item {
@@ -144,6 +145,8 @@ body {
   text-decoration: none;
   color: var(--hint-color);
   font-size: 12px;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
 }
 
 .nav-item.active { color: var(--link-color); }
