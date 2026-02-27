@@ -79,7 +79,7 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 
-const API_URL = '/api'
+const API_URL = 'http://168.231.69.92:54618/api'
 const WORKSPACE = 'agents'
 
 const loading = ref(true)
