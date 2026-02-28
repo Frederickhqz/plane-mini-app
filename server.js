@@ -7,7 +7,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const app = express();
-const PORT = process.env.PORT || 3000;
+const PORT = 3000;
 const PLANE_API = 'http://168.231.69.92:54617/api/v1';
 const API_KEY = 'plane_api_a671d43b3a7248108f522e8c6703aa85';
 const WORKSPACE = 'agents';

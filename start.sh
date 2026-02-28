@@ -1,5 +1,5 @@
 #!/bin/bash
-cd /data/.openclaw/workspace/projects/plane-mini-app
+cd /data/.openclaw/workspace/plane-mini-app
 pkill -f "node.*plane-mini" 2>/dev/null
 sleep 1
 node server.js > /tmp/plane-mini.log 2>&1 &
