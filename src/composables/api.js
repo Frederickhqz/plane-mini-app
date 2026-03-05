@@ -6,6 +6,18 @@ async function apiFetch(endpoint) {
   return res.json()
 }
 
+async function apiFetchWithAuth(endpoint, options = {}) {
+  const res = await fetch(`${API_BASE}${endpoint}`, {
+    ...options,
+    headers: {
+      'Content-Type': 'application/json',
+      ...options.headers
+    }
+  })
+  if (!res.ok) throw new Error(`HTTP ${res.status}`)
+  return res.json()
+}
+
 export const api = {
   // Projects
   async getProjects() {
@@ -18,12 +30,10 @@ export const api = {
   },
   
   async updateProject(id, data) {
-    const res = await fetch(`${API_BASE}/projects/${id}`, {
+    return apiFetchWithAuth(`/projects/${id}`, {
       method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data)
     })
-    return res.json()
   },
 
   // Issues
@@ -37,21 +47,17 @@ export const api = {
   },
   
   async createIssue(projectId, data) {
-    const res = await fetch(`${API_BASE}/issues/${projectId}`, {
+    return apiFetchWithAuth(`/issues/${projectId}`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data)
     })
-    return res.json()
   },
   
   async updateIssue(projectId, issueId, data) {
-    const res = await fetch(`${API_BASE}/issues/${projectId}/${issueId}`, {
+    return apiFetchWithAuth(`/issues/${projectId}/${issueId}`, {
       method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data)
     })
-    return res.json()
   },
 
   // States
@@ -72,12 +78,10 @@ export const api = {
   },
   
   async createCycle(projectId, data) {
-    const res = await fetch(`${API_BASE}/cycles/${projectId}`, {
+    return apiFetchWithAuth(`/cycles/${projectId}`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data)
     })
-    return res.json()
   },
 
   // Modules
@@ -92,12 +96,10 @@ export const api = {
   },
   
   async createModule(projectId, data) {
-    const res = await fetch(`${API_BASE}/modules/${projectId}`, {
+    return apiFetchWithAuth(`/modules/${projectId}`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data)
     })
-    return res.json()
   },
 
   // Labels

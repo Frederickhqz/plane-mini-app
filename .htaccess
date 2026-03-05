@@ -1,0 +1,13 @@
+RewriteEngine On
+
+# If the request is for a real file/directory, serve it
+RewriteCond %{REQUEST_FILENAME} -f [OR]
+RewriteCond %{REQUEST_FILENAME} -d
+RewriteRule ^ - [L]
+
+# If the request starts with /api/, route to index.php (proxy)
+RewriteCond %{REQUEST_URI} ^/api/
+RewriteRule ^(.*)$ index.php [L,QSA]
+
+# For all other requests, serve index.html (SPA fallback)
+RewriteRule ^ index.html [L]

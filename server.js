@@ -2,12 +2,16 @@ import express from 'express';
 import cors from 'cors';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import https from 'https';
+import http from 'http';
+import fs from 'fs';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const app = express();
-const PORT = 3000;
+const HTTP_PORT = 3000;
+const HTTPS_PORT = 3443;
 const PLANE_API = 'http://168.231.69.92:54617/api/v1';
 const API_KEY = 'plane_api_a671d43b3a7248108f522e8c6703aa85';
 const WORKSPACE = 'agents';
@@ -237,6 +241,17 @@ app.use((req, res) => {
   res.sendFile(path.join(__dirname, 'dist', 'index.html'));
 });
 
-app.listen(PORT, '0.0.0.0', () => {
-  console.log(`🚀 Plane Mini App running on port ${PORT}`);
+// Start HTTP server
+http.createServer(app).listen(HTTP_PORT, '0.0.0.0', () => {
+  console.log(`🚀 Plane Mini App HTTP running on port ${HTTP_PORT}`);
+});
+
+// Start HTTPS server with self-signed certificates
+const sslOptions = {
+  key: fs.readFileSync(path.join(__dirname, 'certs', 'key.pem')),
+  cert: fs.readFileSync(path.join(__dirname, 'certs', 'cert.pem'))
+};
+
+https.createServer(sslOptions, app).listen(HTTPS_PORT, '0.0.0.0', () => {
+  console.log(`🔒 Plane Mini App HTTPS running on port ${HTTPS_PORT}`);
 });
